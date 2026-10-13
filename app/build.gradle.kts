@@ -16,7 +16,7 @@ val local = Properties().apply {
     if (archivo.exists()) archivo.inputStream().use { load(it) }
 }
 val servidorPropio: String = local.getProperty("charla.servidor") ?: "http://10.0.2.2:8000"
-val claveAnfitrion: String = local.getProperty("charla.clave") ?: ""
+val claveAnfitrion: String = local.getProperty("charla.clave") ?: "12345678"
 
 android {
     namespace = "mx.tec.charla"
