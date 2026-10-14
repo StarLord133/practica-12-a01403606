@@ -35,7 +35,7 @@ object RedModule {
     @Singleton
     fun salaApi(cliente: OkHttpClient): SalaApi = Retrofit.Builder()
         // Obligatoria para Retrofit, pero no se usa: cada llamada trae su @Url completa.
-        .baseUrl("http://localhost/")
+        .baseUrl("https://suspected-shame-benefit-stylish.trycloudflare.com/")
         .client(cliente)
         .addConverterFactory(Json { ignoreUnknownKeys = true }.asConverterFactory("application/json".toMediaType()))
         .build()

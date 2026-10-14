@@ -1,5 +1,6 @@
 package mx.tec.charla.ui.state
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import mx.tec.charla.data.imagenes.ImagenIlegible
+import mx.tec.charla.data.imagenes.ImagenesRepository
 import mx.tec.charla.data.local.SalaStore
 import mx.tec.charla.data.qr.GeneradorQr
 import mx.tec.charla.data.remote.ChatConexion
@@ -26,7 +29,8 @@ import retrofit2.HttpException
 class SalaViewModel @Inject constructor(
     private val store: SalaStore,
     private val conexion: ChatConexion,
-    private val api: SalaApi
+    private val api: SalaApi,
+    private val imagenes: ImagenesRepository
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(SalaUiState())
@@ -76,6 +80,32 @@ class SalaViewModel @Inject constructor(
 
     /** true si salió. El mensaje no se pinta aquí: se pinta cuando el servidor lo reparte, a todos igual. */
     fun enviar(texto: String): Boolean = texto.isNotBlank() && conexion.enviar(Orden.Enviar(texto.trim()))
+
+    /**
+     * Una foto, en dos pasos: primero se sube por HTTP (POST /imagenes) y el
+     * servidor devuelve su clave; luego esa clave viaja por el WebSocket como
+     * cualquier mensaje. El WebSocket nunca carga la foto.
+     */
+    fun enviarFoto(uri: Uri) {
+        val destino = _ui.value.destino ?: return
+        _ui.update { it.copy(subiendoFoto = true, avisoFoto = null) }
+        viewModelScope.launch {
+            val aviso = try {
+                val clave = imagenes.subir(uri, destino)
+                if (conexion.enviar(Orden.Enviar("", clave))) null else "Se cortó la conexión: la foto no se envió"
+            // ImagenIlegible primero: los catch se prueban en orden.
+            } catch (e: ImagenIlegible) {
+                e.message
+            } catch (e: IOException) {
+                mensajeDe(e)
+            } catch (e: HttpException) {
+                mensajeDe(e)
+            }
+            _ui.update { it.copy(subiendoFoto = false, avisoFoto = aviso) }
+        }
+    }
+
+    fun avisoFotoVisto() = _ui.update { it.copy(avisoFoto = null) }
 
     fun aprobar(solicitud: Solicitud) = responder(solicitud, Orden.Aprobar(solicitud.id))
 

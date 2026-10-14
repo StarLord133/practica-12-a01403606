@@ -29,12 +29,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,6 +57,7 @@ import mx.tec.charla.domain.EstadoConexion
 import mx.tec.charla.domain.Mensaje
 import mx.tec.charla.domain.SALA
 import mx.tec.charla.domain.Solicitud
+import mx.tec.charla.domain.urlDeImagen
 import mx.tec.charla.ui.components.AvisoDeSala
 import mx.tec.charla.ui.components.BarraMensaje
 import mx.tec.charla.ui.components.Burbuja
@@ -75,9 +79,20 @@ fun SalaScreen(
     onInvitar: () -> Unit,
     onCerrarInvitacion: () -> Unit,
     onUnirme: () -> Unit,
-    onReiniciar: () -> Unit
+    onReiniciar: () -> Unit,
+    onCamara: () -> Unit,
+    onGaleria: () -> Unit,
+    onAvisoFotoVisto: () -> Unit
 ) {
     var borrador by rememberSaveable { mutableStateOf("") }
+    val avisos = remember { SnackbarHostState() }
+    // La foto no salió: se dice una vez y se olvida.
+    LaunchedEffect(estado.avisoFoto) {
+        estado.avisoFoto?.let {
+            avisos.showSnackbar(it)
+            onAvisoFotoVisto()
+        }
+    }
     val e = CharlaTema.espaciado
     IconosClarosEnLaBarraDeEstado()
     Scaffold(
@@ -87,9 +102,13 @@ fun SalaScreen(
                 texto = borrador,
                 onTexto = { borrador = it },
                 onEnviar = { if (onEnviar(borrador)) borrador = "" },
-                habilitada = estado.puedeEscribir
+                habilitada = estado.puedeEscribir,
+                subiendoFoto = estado.subiendoFoto,
+                onCamara = onCamara,
+                onGaleria = onGaleria
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(avisos) }
     ) { relleno ->
         Column(Modifier.padding(relleno).fillMaxSize()) {
             AnimatedVisibility(estado.solicitudes.isNotEmpty()) {
@@ -106,7 +125,7 @@ fun SalaScreen(
             if (estado.mensajes.isEmpty()) {
                 SalaVacia(esPropio = estado.destino?.esPropio != false, modifier = Modifier.weight(1f))
             } else {
-                Mensajes(estado.mensajes, yo = estado.destino?.yo.orEmpty(), modifier = Modifier.weight(1f))
+                Mensajes(estado.mensajes, destino = estado.destino, modifier = Modifier.weight(1f))
             }
         }
     }
@@ -183,7 +202,8 @@ private fun Encabezado(estado: SalaUiState, onInvitar: () -> Unit, onUnirme: () 
 }
 
 @Composable
-private fun Mensajes(mensajes: List<Mensaje>, yo: String, modifier: Modifier = Modifier) {
+private fun Mensajes(mensajes: List<Mensaje>, destino: Destino?, modifier: Modifier = Modifier) {
+    val yo = destino?.yo.orEmpty()
     val lista = rememberLazyListState()
     val e = CharlaTema.espaciado
     // Llega un mensaje: a la vista, abajo.
@@ -198,7 +218,13 @@ private fun Mensajes(mensajes: List<Mensaje>, yo: String, modifier: Modifier = M
             when (m.de) {
                 SALA -> AvisoDeSala(m.texto)
                 // El nombre solo en el primero de una racha: tres seguidos de dani son UNA voz.
-                else -> Burbuja(m, mia = m.de == yo, conNombre = i == 0 || mensajes[i - 1].de != m.de)
+                else -> Burbuja(
+                    m,
+                    mia = m.de == yo,
+                    conNombre = i == 0 || mensajes[i - 1].de != m.de,
+                    fotoUrl = m.imagen?.let { clave -> destino?.urlDeImagen(clave) },
+                    token = destino?.token.orEmpty()
+                )
             }
         }
     }
@@ -262,7 +288,8 @@ private fun SalaPreview() {
                 solicitudes = listOf(Solicitud("x", "eli"))
             ),
             onEnviar = { true }, onAprobar = {}, onRechazar = {}, onInvitar = {},
-            onCerrarInvitacion = {}, onUnirme = {}, onReiniciar = {}
+            onCerrarInvitacion = {}, onUnirme = {}, onReiniciar = {},
+            onCamara = {}, onGaleria = {}, onAvisoFotoVisto = {}
         )
     }
 }

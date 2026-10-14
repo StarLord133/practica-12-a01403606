@@ -2,9 +2,12 @@ package mx.tec.charla.domain
 
 import kotlinx.serialization.Serializable
 
-/** Un mensaje de la sala. `en` son segundos desde 1970, como los cuenta Python (`time.time()`). */
+/**
+ * Un mensaje de la sala. `en` son segundos desde 1970, como los cuenta Python (`time.time()`).
+ * `imagen` es la clave de una foto en el servidor (GET /imagenes/{clave}), o null.
+ */
 @Serializable
-data class Mensaje(val id: Long, val de: String, val texto: String, val en: Double)
+data class Mensaje(val id: Long, val de: String, val texto: String, val en: Double, val imagen: String? = null)
 
 /** Alguien que pidió entrar y espera a que el anfitrión decida. */
 @Serializable
@@ -31,3 +34,6 @@ sealed interface EstadoConexion {
 /** Los nombres que pone el servidor. Nadie más puede usarlos. */
 const val ANFITRION = "anfitrión"
 const val SALA = "sala"
+
+/** La dirección de una foto de esta sala. Se pide con el mismo token del WebSocket. */
+fun Destino.urlDeImagen(clave: String) = "$servidor/imagenes/$clave"

@@ -12,7 +12,11 @@ data class SalaUiState(
     val conexion: EstadoConexion = EstadoConexion.Desconectado,
     val mensajes: List<Mensaje> = emptyList(),
     val solicitudes: List<Solicitud> = emptyList(),
-    val invitacion: InvitacionUi = InvitacionUi.Cerrada
+    val invitacion: InvitacionUi = InvitacionUi.Cerrada,
+    /** Se está comprimiendo y subiendo una foto: el botón de cámara gira mientras tanto. */
+    val subiendoFoto: Boolean = false,
+    /** Por qué no salió la última foto. null = nada que decir. */
+    val avisoFoto: String? = null
 ) {
     val puedeEscribir: Boolean get() = conexion == EstadoConexion.Conectado
 }

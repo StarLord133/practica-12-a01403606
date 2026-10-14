@@ -82,6 +82,12 @@ dependencies {
     implementation(libs.mlkit.barcode.scanning)
     implementation(libs.kotlinx.coroutines.play.services)
 
+    // Las fotos: Coil las descarga con el MISMO OkHttpClient de la app (di/ImagenesModule.kt);
+    // exifinterface lee cómo venía girada la foto antes de comprimirla.
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+    implementation(libs.androidx.exifinterface)
+
     // Pruebas locales (src/test): corren en la JVM de tu computadora, sin emulador.
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

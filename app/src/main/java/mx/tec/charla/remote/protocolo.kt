@@ -27,8 +27,14 @@ sealed interface EventoServidor {
 
     @Serializable
     @SerialName("mensaje")
-    data class Nuevo(val id: Long, val de: String, val texto: String, val en: Double) : EventoServidor {
-        fun aMensaje() = Mensaje(id, de, texto, en)
+    data class Nuevo(
+        val id: Long,
+        val de: String,
+        val texto: String,
+        val en: Double,
+        val imagen: String? = null
+    ) : EventoServidor {
+        fun aMensaje() = Mensaje(id, de, texto, en, imagen)
     }
 
     @Serializable
@@ -43,7 +49,7 @@ sealed interface EventoServidor {
 sealed interface Orden {
     @Serializable
     @SerialName("mensaje")
-    data class Enviar(val texto: String) : Orden
+    data class Enviar(val texto: String, val imagen: String? = null) : Orden
 
     @Serializable
     @SerialName("aprobar")

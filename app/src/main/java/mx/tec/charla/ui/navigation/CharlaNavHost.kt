@@ -1,17 +1,25 @@
 package mx.tec.charla.ui.navigation
 
+import android.content.Context
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import java.io.File
 import mx.tec.charla.ui.screens.SalaScreen
 import mx.tec.charla.ui.screens.UnirseScreen
 import mx.tec.charla.ui.state.Etapa
@@ -40,6 +48,20 @@ fun CharlaNavHost() {
                 onStopOrDispose { viewModel.alDesaparecer() }
             }
 
+            // Fotos para la sala: de la galería (sin permisos) o de la cámara.
+            val galeria = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { foto ->
+                if (foto != null) viewModel.enviarFoto(foto)
+            }
+            // La cámara es otra app: Android puede cerrar Charla mientras tomas la foto.
+            // rememberSaveable guarda a qué archivo iba, para encontrarla al volver.
+            val contexto = LocalContext.current
+            var fotoPendiente by rememberSaveable { mutableStateOf<Uri?>(null) }
+            val camara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { tomada ->
+                val foto = fotoPendiente
+                fotoPendiente = null
+                if (tomada && foto != null) viewModel.enviarFoto(foto)
+            }
+
             SalaScreen(
                 estado = estado,
                 onEnviar = viewModel::enviar,
@@ -48,7 +70,16 @@ fun CharlaNavHost() {
                 onInvitar = viewModel::invitar,
                 onCerrarInvitacion = viewModel::cerrarInvitacion,
                 onUnirme = { nav.navigate(Ruta.UNIRSE) },
-                onReiniciar = viewModel::reiniciar
+                onReiniciar = viewModel::reiniciar,
+                onCamara = {
+                    val destino = archivoParaFoto(contexto)
+                    fotoPendiente = destino
+                    camara.launch(destino)
+                },
+                onGaleria = {
+                    galeria.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onAvisoFotoVisto = viewModel::avisoFotoVisto
             )
         }
 
@@ -81,4 +112,14 @@ fun CharlaNavHost() {
             )
         }
     }
+}
+
+/**
+ * Donde la cámara deja la foto: siempre el mismo archivo, que la siguiente
+ * sobrescribe. Ya subida, no hace falta guardarla. La dirección es content://
+ * por FileProvider (AndroidManifest.xml y res/xml/fotos.xml).
+ */
+private fun archivoParaFoto(contexto: Context): Uri {
+    val archivo = File(File(contexto.filesDir, "fotos").apply { mkdirs() }, "camara.jpg")
+    return FileProvider.getUriForFile(contexto, "${contexto.packageName}.fotos", archivo)
 }
